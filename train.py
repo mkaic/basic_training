@@ -70,7 +70,6 @@ for epoch in range(EPOCHS):
                 {
                     "Train Loss": loss.item(),
                 },
-                sync_dist=True,
             )
 
         train_loss = train_loss * 0.99 + loss.item() * 0.01 if step > 0 else loss.item()
@@ -87,7 +86,7 @@ for epoch in range(EPOCHS):
         all_val_losses.append(loss.item())
 
     validation_loss = sum(all_val_losses) / len(all_val_losses)
-    wandb.log({"VAL Loss": validation_loss}, sync_dist=True)
+    wandb.log({"VAL Loss": validation_loss})
 
     run_path = (
         Path(LOG_DIR) / "most_recent"
