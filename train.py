@@ -80,7 +80,7 @@ for epoch in range(EPOCHS):
         optimizer.step()
 
     all_val_losses = []
-    for x in tqdm(val_dl):
+    for x in tqdm(val_dl, leave=False):
         x = x.to(DEVICE)
         y_hat, mu, log_var = model(x)
         loss = model.loss_function(y_hat, x, mu, log_var)
