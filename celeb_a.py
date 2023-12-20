@@ -40,6 +40,7 @@ class CelebA(VisionDataset):
         split: str = "train",
         transform: Optional[Callable] = None,
         download: bool = False,
+        limit: Optional[int] = None,
     ) -> None:
         super().__init__(root, transform=transform)
         self.split = split
@@ -66,6 +67,8 @@ class CelebA(VisionDataset):
             self.filename = [
                 splits.index[i] for i in torch.squeeze(torch.nonzero(mask))
             ]
+        if limit is not None:
+            self.filename = self.filename[:limit]
 
     def _load_csv(
         self,
@@ -77,7 +80,7 @@ class CelebA(VisionDataset):
 
         if header is not None:
             headers = data[header]
-            data = data[header + 1 :]
+            data = data[header + 1:]
         else:
             headers = []
 
