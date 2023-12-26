@@ -6,7 +6,6 @@ from vae import VAE
 import torch
 from pathlib import Path
 import wandb
-import copy
 from tqdm import tqdm
 
 wandb.init(project="basic_training")
