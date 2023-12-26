@@ -15,6 +15,7 @@ EPOCHS = 100
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 LOG_DIR = Path("./logs")
 BATCH_SIZE = 32
+CELEB_A_PATH = Path("./celeb_a")
 
 if not LOG_DIR.exists():
     LOG_DIR.mkdir(parents=True)
@@ -23,13 +24,13 @@ transforms = T.Compose(
     [T.RandomHorizontalFlip(), T.Resize(128), T.CenterCrop(128), T.ToTensor()]
 )
 
-download = not Path("./celeb_a/celeba/img_align_celeba").exists()
+download = not Path(CELEB_A_PATH/"celeba/img_align_celeba").exists()
 
 train_ds = CelebA(
-    root="./celeb_a", split="train", download=download, transform=transforms
+    root=CELEB_A_PATH, split="train", download=download, transform=transforms
 )
 val_ds = CelebA(
-    root="./celeb_a", split="valid", download=download, transform=transforms
+    root=CELEB_A_PATH, split="valid", download=download, transform=transforms
 )
 
 print("train_ds length: ", len(train_ds))
@@ -68,7 +69,7 @@ for epoch in range(EPOCHS):
         if step % 25 == 0:
             wandb.log(
                 {
-                    "Train Loss": loss.item(),
+                    "TRAIN Loss": loss.item(),
                 },
             )
 
@@ -78,29 +79,29 @@ for epoch in range(EPOCHS):
         loss.backward()
         optimizer.step()
 
-    all_val_losses = []
-    for x in tqdm(val_dl, leave=False):
-        x = x.to(DEVICE)
-        y_hat, mu, log_var = model(x)
-        loss = model.loss_function(y_hat, x, mu, log_var)
-        all_val_losses.append(loss.item())
+    with torch.no_grad():
+        all_val_losses = []
+        for x in tqdm(val_dl, leave=False):
+            x = x.to(DEVICE)
+            y_hat, mu, log_var = model(x)
+            loss = model.loss_function(y_hat, x, mu, log_var)
+            all_val_losses.append(loss.item())
+    
+        validation_loss = sum(all_val_losses) / len(all_val_losses)
+        wandb.log({"VAL Loss": validation_loss})
+    
+        run_path = (
+            Path(LOG_DIR) / "most_recent"
+            if not wandb.run.name
+            else Path(LOG_DIR) / wandb.run.name
+        )
+        run_path.mkdir(exist_ok=True, parents=True)
+    
+        vutils.save_image(
+            y_hat.data,
+            run_path / f"recons_epoch_{epoch}.png",
+            normalize=True,
+            nrow=12,
+        )
 
-    validation_loss = sum(all_val_losses) / len(all_val_losses)
-    wandb.log({"VAL Loss": validation_loss})
-
-    run_path = (
-        Path(LOG_DIR) / "most_recent"
-        if not wandb.run.name
-        else Path(LOG_DIR) / wandb.run.name
-    )
-    run_path.mkdir(exist_ok=True, parents=True)
-
-    vutils.save_image(
-        y_hat.data,
-        run_path / f"recons_epoch_{epoch}.png",
-        normalize=True,
-        nrow=12,
-    )
-
-
-torch.save(model.state_dict(), Path(LOG_DIR) / "final_weights.pt")
+torch.save(model.state_dict(), run_path / "weights.pt")
